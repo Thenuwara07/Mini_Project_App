@@ -11,16 +11,7 @@ class DatabaseService {
       : collection = FirebaseFirestore.instance.collection("data");
   final sus = "Data added successfully";
 
-  // Create - Add a new document
-  // Future<void> addDocument(Map<String, dynamic> data) async {
-  //   try {
-  //     await collection.add(data);
-  //   } catch (e) {
-  //     print("Error adding document: $e");
-  //   }
-  // }
-
-  Future<void> addDocument(Map<String, dynamic> data) async {
+  Future<void> addDocument(String collectionName, Map<String, dynamic> data) async {
     try {
       // Get the current user's UID
       final user = FirebaseAuth.instance.currentUser;
@@ -28,11 +19,11 @@ class DatabaseService {
       if (user != null) {
         // Use the UID as the document ID
         await FirebaseFirestore.instance
-            .collection('bio_data')
+            .collection(collectionName)
             .doc(user.uid)
             .set(data);
       } else {
-        await FirebaseFirestore.instance.collection('bio_data').doc().set(data);
+        await FirebaseFirestore.instance.collection(collectionName).doc().set(data);
       }
     } catch (e) {
       print("Error adding document: $e");
@@ -41,13 +32,13 @@ class DatabaseService {
 
   // Read - Get all documents as a stream
 
-  Stream<DocumentSnapshot> getDocuments() {
+  Stream<DocumentSnapshot> getDocuments(String collectionName) {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
       // Return a stream of the document that matches the user's UID
       return FirebaseFirestore.instance
-          .collection('bio_data')
+          .collection(collectionName)
           .doc(user.uid)
           .snapshots();
     } else {
@@ -62,15 +53,6 @@ class DatabaseService {
       await collection.doc(docId).update(data);
     } catch (e) {
       print("Error updating document: $e");
-    }
-  }
-
-  // Delete - Delete a document
-  Future<void> deleteDocument(String docId) async {
-    try {
-      await collection.doc(docId).delete();
-    } catch (e) {
-      print("Error deleting document: $e");
     }
   }
 }

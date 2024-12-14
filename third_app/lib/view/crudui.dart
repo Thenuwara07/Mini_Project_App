@@ -1,147 +1,114 @@
-import 'package:flutter/material.dart';
-import '../db/biodata.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:flutter/material.dart';
+// import 'package:third_app/Auth/auth.dart';
 
-class CrudUI extends StatefulWidget {
-  const CrudUI({Key? key}) : super(key: key);
+// class Home extends StatefulWidget {
+//   @override
+//   _HomeState createState() => _HomeState();
+// }
 
-  @override
-  _CrudUIState createState() => _CrudUIState();
-}
+// class _HomeState extends State<Home> {
+//   final _auth = AuthService();
 
-class _CrudUIState extends State<CrudUI> {
-  final DatabaseService database =
-      DatabaseService(collectionPath: 'yourCollection');
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
+//   // Function to show warning popup
+//   Future<void> showDeleteWarningDialog(BuildContext context) async {
+//     return showDialog<void>(
+//       context: context,
+//       barrierDismissible: false, // Prevent closing the dialog by tapping outside
+//       builder: (BuildContext context) {
+//         return AlertDialog(
+//           title: Text('Warning', style: TextStyle(color: Colors.red)),
+//           content: Text('Are you sure you want to delete your account? This action cannot be undone.'),
+//           actions: <Widget>[
+//             TextButton(
+//               onPressed: () {
+//                 Navigator.of(context).pop(); // Close the dialog
+//               },
+//               child: Text('Cancel', style: TextStyle(color: Colors.white)),
+//             ),
+//             TextButton(
+//               onPressed: () async {
+//                 Navigator.of(context).pop(); // Close the dialog before deleting
+//                 await deleteAccount(context); // Call delete account function
+//               },
+//               child: Text('Delete', style: TextStyle(color: Colors.red)),
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
 
-  void _addData() {
-    if (_nameController.text.isNotEmpty && _ageController.text.isNotEmpty) {
-      database.addDocument({
-        'name': _nameController.text,
-        'age': int.tryParse(_ageController.text) ?? 0,
-        'createdAt': Timestamp.now(),
-      });
-      _nameController.clear();
-      _ageController.clear();
-    }
-  }
+//   // Function to delete account
+//   Future<void> deleteAccount(BuildContext context) async {
+//     try {
+//       final user = FirebaseAuth.instance.currentUser;
 
-  void _updateData(String docId, String name, int age) {
-    _nameController.text = name;
-    _ageController.text = age.toString();
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Update Document"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Name"),
-              ),
-              TextField(
-                controller: _ageController,
-                decoration: const InputDecoration(labelText: "Age"),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (_nameController.text.isNotEmpty &&
-                    _ageController.text.isNotEmpty) {
-                  database.updateDocument(docId, {
-                    'name': _nameController.text,
-                    'age': int.tryParse(_ageController.text) ?? age,
-                  });
-                  _nameController.clear();
-                  _ageController.clear();
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text("Update"),
-            ),
-          ],
-        );
-      },
-    );
-  }
+//       if (user != null) {
+//         String uid = user.uid;
 
-  void _deleteData(String docId) {
-    database.deleteDocument(docId);
-  }
+//         // Delete the user's document from Firestore
+//         await FirebaseFirestore.instance.collection('recovery_data').doc(uid).delete();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("CRUD Example")),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: "Name"),
-            ),
-            TextField(
-              controller: _ageController,
-              decoration: const InputDecoration(labelText: "Age"),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _addData,
-              child: const Text("Add Data"),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: database
-                    .getDocuments(), // Updated function call for single document
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.data!.exists) {
-                    return const Center(child: Text("No data available"));
-                  }
+//         // Delete the user's account from FirebaseAuth
+//         await user.delete();
 
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
-                  return ListView(
-                    children: [
-                      ListTile(
-                        title: Text(data['name'] ?? "No Name"),
-                        subtitle: Text("Age: ${data['age'] ?? "N/A"}"),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _updateData(
-                                snapshot.data!.id,
-                                data['name'] ?? "",
-                                data['age'] ?? 0,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteData(snapshot.data!.id),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            )
-            ],
-        ),
-      ),
-    );
-  }
-}
+//         // Show success message
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Account and data deleted successfully.")),
+//         );
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("No user is currently logged in.")),
+//         );
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text("Error deleting account: $e")),
+//       );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text(
+//           "BioMark",
+//           style: TextStyle(color: Colors.white),
+//         ),
+//         backgroundColor: Colors.purple,
+//         automaticallyImplyLeading: false,
+//       ),
+//       body: SingleChildScrollView(
+//         child: Padding(
+//           padding: const EdgeInsets.all(8.0),
+//           child: Column(
+//             children: [
+//               const SizedBox(height: 100),
+//               Container(
+//                 margin: const EdgeInsets.all(8),
+//                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+//                 child: ElevatedButton(
+//                   onPressed: () {
+//                     showDeleteWarningDialog(context); // Show warning dialog
+//                   },
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: Colors.red[900],
+//                     padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 50),
+//                   ),
+//                   child: const Text(
+//                     "Delete Account",
+//                     style: TextStyle(color: Colors.white, fontSize: 20),
+//                   ),
+//                 ),
+//               ),
+//               // Other buttons and UI elements...
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }

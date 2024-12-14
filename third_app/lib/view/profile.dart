@@ -1,120 +1,135 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:third_app/view/recoverydata.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:third_app/view/editprofile.dart';
 
-class Profile extends StatelessWidget {
-  const Profile({super.key});
+class ViewRecoveryData extends StatelessWidget {
+  final User? user = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
-    final User? user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
-      backgroundColor: Colors.purple,
       appBar: AppBar(
         title: const Text(
-          'Profile Details',
+          "View Recovery Data",
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.purple,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.of(context).pop();  // Navigate back when pressed
-          },
-        ),
+        iconTheme: const IconThemeData(color: Colors.white), // Back arrow color
       ),
       body: user == null
-          ? const Center(
-              child: Text(
-                'No user logged in!',
-                style: TextStyle(fontSize: 20, color: Colors.white),
+          ? Center(
+              child: const Text(
+                "You need to be logged in to view recovery data.",
+                style: TextStyle(fontSize: 18),
               ),
             )
-          : Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      user.displayName ?? 'Pramukha',
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+          : StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('recovery_data')
+                  .doc(user!.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return Center(
+                    child: const Text(
+                      "No Recovery Data found.",
+                      style: TextStyle(fontSize: 18),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      user.email ?? 'No Email',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.white60,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    ProfileDetailTile(label: 'Email', value: user.email ?? 'No Email'),
-                    ProfileDetailTile(label: 'Name', value: user.displayName ?? 'Pramukha'),
-                    const SizedBox(height: 20),  // Moved the SizedBox here
-                    Container(
-                      height: 30,
-                      width: MediaQuery.of(context).size.width * .5,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.white,
-                      ),
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RecoveryData(),
+                  );
+                }
+
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _buildDataRow("Full Name", data['fullName'] ?? 'N/A'),
+                        _buildDataRow("Email", user?.email ?? 'N/A'),
+                        _buildDataRow("Mother's Maiden Name", data['mothersMaidenName'] ?? 'N/A'),
+                        _buildDataRow("Best Friend's Name", data['bestFriendName'] ?? 'N/A'),
+                        _buildDataRow("Pet's Name", data['petName'] ?? 'N/A'),
+                        _buildDataRow("Custom Security Question", data['ownQuestion'] ?? 'N/A'),
+                        _buildDataRow("Answer for Custom Question", data['ownAnswer'] ?? 'N/A'),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditRecoveryData(data: data),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 15, horizontal: 50),
                             ),
-                          );
-                        },
-                        child: const Text(
-                          'Add Personal Data',
-                          style: TextStyle(color: Colors.purple, fontSize: 10),
+                            child: const Text(
+                              "Edit",
+                              style: TextStyle(
+                                color: Colors.white, 
+                                fontSize: 20, 
+                                fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
     );
   }
-}
 
-class ProfileDetailTile extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const ProfileDetailTile({
-    Key? key,
-    required this.label,
-    required this.value,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+  /// Builds a reusable card-style layout for displaying a data field.
+Widget _buildDataRow(String label, String value) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.purple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$label: ',
-            style: const TextStyle(fontSize: 18, color: Colors.white),
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, color: Colors.white70),
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
     );
   }
-}
+
+  
+
+} 

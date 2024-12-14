@@ -38,7 +38,7 @@ class _BiodataState extends State<Biodata> {
         _heightController.text.isNotEmpty &&
         _ethnicityController.text.isNotEmpty &&
         _eyeColorController.text.isNotEmpty) {
-      database.addDocument({
+      database.addDocument('bio_data', {
         'dateOfBirth': Timestamp.fromDate(DateTime.parse(_dobController.text)),
         'timeOfBirth': _timeOfBirthController.text,
         'locationOfBirth': _locationOfBirthController.text,
@@ -49,6 +49,15 @@ class _BiodataState extends State<Biodata> {
         'eyeColor': _eyeColorController.text,
         'createdAt': Timestamp.now(),
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Bio Data saved successfully!")),
+      );
+      Future<void> delayedFunction() async {
+        await Future.delayed(const Duration(seconds: 2));
+      }
+
+      delayedFunction();
 
       _clearFields();
       if (user != null) {

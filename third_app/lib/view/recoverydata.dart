@@ -1,8 +1,9 @@
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:third_app/db/biodata.dart';
-import 'package:third_app/db/database.dart';
-import 'package:third_app/view/profile.dart';
+import 'package:third_app/view/home.dart';
+import 'package:third_app/Auth/login.dart';
 
 class RecoveryData extends StatefulWidget {
   @override
@@ -10,58 +11,79 @@ class RecoveryData extends StatefulWidget {
 }
 
 class _RecoveryDataState extends State<RecoveryData> {
+  final _formKey = GlobalKey<FormState>();
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  final DatabaseService database =
+      DatabaseService(collectionPath: 'recoverydata');
+
   final TextEditingController _fullName = TextEditingController();
-  final TextEditingController _mothersmaidenName = TextEditingController();
-  final TextEditingController _bestfriendName = TextEditingController();
+  final TextEditingController _mothersMaidenName = TextEditingController();
+  final TextEditingController _bestFriendName = TextEditingController();
   final TextEditingController _petName = TextEditingController();
   final TextEditingController _ownQ = TextEditingController();
   final TextEditingController _ownA = TextEditingController();
+
   bool _isLoading = false;
 
-  Future<void> _RecoveryData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  void _addData() {
+    if (user == null) {
+      throw Exception("User not authenticated");
+    }
+    try {
 
-    final dbService = DatabaseServices();
-    final User? user = FirebaseAuth.instance.currentUser;
-    final String userUid = user?.uid ?? 'No UID available';
+      if (_fullName.text.isNotEmpty &&
+          _mothersMaidenName.text.isNotEmpty &&
+          _bestFriendName.text.isNotEmpty &&
+          _petName.text.isNotEmpty &&
+          _ownQ.text.isNotEmpty &&
+          _ownA.text.isNotEmpty) {
+        database.addDocument('recovery_data', {
+          'fullName': _fullName.text.trim(),
+          'mothersMaidenName': _mothersMaidenName.text.trim(),
+          'bestFriendName': _bestFriendName.text.trim(),
+          'petName': _petName.text.trim(),
+          'ownQuestion': _ownQ.text.trim(),
+          'ownAnswer': _ownA.text.trim(),
+          // 'userId': user.uid,
+        });
 
-    // Create the to-do item with all fields, passing the parsed DateTime directly
-    final success = await dbService.createToDo(
-      userUid,
-      _fullName.text,
-      _mothersmaidenName.text,
-      _bestfriendName.text,
-      _petName.text,
-      _ownQ.text,
-      _ownA.text,
-    );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Data saved successfully!")),
+        );
+        Future<void> delayedFunction() async {
+          await Future.delayed(const Duration(seconds: 2));
+        }
 
-    setState(() {
-      _isLoading = false;
-    });
+        delayedFunction();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(success
-              ? "To-Do created successfully!"
-              : "Failed to create To-Do")),
-    );
-
-    if (success) {
-      _clearFields();
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => Profile()),
+        _clearFields();
+        if (user != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => Home()),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => Login()),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving data: ${e.toString()}")),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   void _clearFields() {
     _fullName.clear();
-    _mothersmaidenName.clear();
-    _bestfriendName.clear();
+    _mothersMaidenName.clear();
+    _bestFriendName.clear();
     _petName.clear();
     _ownQ.clear();
     _ownA.clear();
@@ -70,8 +92,8 @@ class _RecoveryDataState extends State<RecoveryData> {
   @override
   void dispose() {
     _fullName.dispose();
-    _mothersmaidenName.dispose();
-    _bestfriendName.dispose();
+    _mothersMaidenName.dispose();
+    _bestFriendName.dispose();
     _petName.dispose();
     _ownQ.dispose();
     _ownA.dispose();
@@ -87,37 +109,46 @@ class _RecoveryDataState extends State<RecoveryData> {
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.purple,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildTextField("Full Name", _fullName),
-                _buildTextField("Mother's Maiden Name", _mothersmaidenName),
-                _buildTextField(
-                    "Childhood Best Friend's Name", _bestfriendName),
-                _buildTextField("Childhood Pet's Name", _petName),
-                _buildTextField("Your Own Question", _ownQ),
-                _buildTextField("Answer For your own Question", _ownA),
-                const SizedBox(height: 20),
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _RecoveryData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 50),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  _buildTextField("Full Name", _fullName),
+                  _buildTextField("Mother's Maiden Name", _mothersMaidenName),
+                  _buildTextField("Best Friend's Name", _bestFriendName),
+                  _buildTextField("Pet's Name", _petName),
+                  _buildTextField("Custom Security Question", _ownQ),
+                  _buildTextField("Answer for Custom Question", _ownA),
+                  const SizedBox(height: 20),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _addData();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 50),
+                          ),
+                          child: const Text(
+                            "Save",
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
                         ),
-                        child: const Text(
-                          "Save",
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
-                      ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -126,25 +157,22 @@ class _RecoveryDataState extends State<RecoveryData> {
   }
 
   Widget _buildTextField(String hint, TextEditingController controller) {
-    return Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Colors.purple.withOpacity(0.1),
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
       child: TextFormField(
         controller: controller,
+        validator: (value) => value == null || value.trim().isEmpty
+            ? "This field is required"
+            : null,
         decoration: InputDecoration(
           hintText: hint,
-          border: InputBorder.none,
+          filled: true,
+          fillColor: Colors.purple.withOpacity(0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return "Please enter $hint";
-          }
-          return null;
-        },
       ),
     );
   }
